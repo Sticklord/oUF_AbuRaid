@@ -318,8 +318,6 @@ function addon:UpdateRaidLayout(event, asd)
 		header:SetAttribute("showParty", (layout == "party") and self.config.showInParty or nil)
 		header:SetAttribute("showRaid", true)
 
-		header:SetAttribute("groupFilter", tonumber(i))
-
 		header:SetAttribute("xOffset", xOffset)
 		header:SetAttribute("yOffset", yOffset)
 		header:SetAttribute("point", point)
@@ -328,9 +326,11 @@ function addon:UpdateRaidLayout(event, asd)
 		header:SetAttribute('sortMethod', 'INDEX')
 
 		if (i == 1) and (layout == "party") then -- not sure if this does anything
+			header:SetAttribute("groupFilter", nil)
 			header:SetAttribute("groupBy", nil)
 		else
 			header:SetAttribute("groupBy", 'GROUP')
+			header:SetAttribute("groupFilter", tonumber(i))
 		end
 
 		if needCreation then  -- Creates all frames, so no fuckups

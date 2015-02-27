@@ -399,7 +399,9 @@ do
 					break;
 				end
 			else
-				isBossDebuff = isBossDebuff or caster:find("boss")
+				if (not isBossDebuff) then
+					isBossDebuff = caster and caster:find("boss")
+				end
 				if (harmful) and (canAssist) and (dispelPriority[debuffType]) and (
 					(canDispelLast and ns.Dispel[debuffType] and dispelPriority[debuffType] > lastPrior) or
 					(not canDispelLast and (ns.Dispel[debuffType] or dispelPriority[debuffType] > lastPrior))) -- looks pretty dont it
