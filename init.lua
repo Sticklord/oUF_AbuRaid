@@ -229,7 +229,10 @@ function addon:CreateHeaders(width, height, scale)
 	for i = 1, NUM_RAID_GROUPS do
 		local header = oUF:SpawnHeader("oUF_AbuRaid"..i, nil, nil,
 			"showPlayer", true,
-
+			'showParty', true,
+			'showRaid', true,
+			'showSolo', true,
+			
 			"oUF-initialConfigFunction", [[
 				local unit = ...
 				local header = self:GetParent()
@@ -246,8 +249,6 @@ function addon:CreateHeaders(width, height, scale)
 			"initial-height", height,
 			"initial-scale", scale,
 			"unitsPerColumn", 5
-
-			--columnAnchorPoint.
 		)
 		header:Show()
 		self.headers[i] = header
@@ -324,20 +325,19 @@ function addon:UpdateRaidLayout(event, asd)
 
 		header:SetAttribute("groupingOrder", "1,2,3,4,5,6,7,8")
 		header:SetAttribute('sortMethod', 'INDEX')
+		header:SetAttribute("groupBy", 'GROUP')
 
-		if (i == 1) and (layout == "party") then -- not sure if this does anything
+		if (i == 1) and (layout == "party") then
 			header:SetAttribute("groupFilter", nil)
-			header:SetAttribute("groupBy", nil)
 		else
-			header:SetAttribute("groupBy", 'GROUP')
 			header:SetAttribute("groupFilter", tonumber(i))
 		end
 
 		if needCreation then  -- Creates all frames, so no fuckups
-			header:SetAttribute("startingIndex", -4)
 			header:Show()
-			header:Hide()
+			header:SetAttribute("startingIndex", -4)
 			header:SetAttribute("startingIndex", 1)
+			header:Hide()
 			for index, child in next, {header:GetChildren()} do
 				header[index] = child
 			end
