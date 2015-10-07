@@ -306,13 +306,11 @@ local function updateRaidFrameLayout(self, width, height)
 	end
 end
 
-
 local function createRaidFrame(self, unit)
 	self.Range = {
 		insideAlpha	= 1.0,
 		outsideAlpha = 0.6,
 	}
-
 	local frame_level = self:GetFrameLevel()
 	local statusbar = cfg.statusbar
 
@@ -330,9 +328,9 @@ local function createRaidFrame(self, unit)
 	self.Overlay = overlay
 
 	ns.CreateBorder(overlay, 12, 4, "BORDER", "BACKGROUND")
-	self.SetBorderColor = function(self,r,g,b,a) return self.Overlay:SetBorderColor(r,g,b,a) end
-	self.SetBorderShadowColor = function(self,r,g,b,a) return self.Overlay:SetBorderShadowColor(r,g,b,a) end
-	self.SetBorderGlowColor = function(self,r,g,b,a) return self.Overlay:SetBorderGlowColor(r,g,b,a) end
+	self.SetBorderColor = self.Overlay.SetBorderColor
+	self.SetBorderShadowColor = self.Overlay.SetBorderShadowColor
+	self.SetBorderGlowColor = self.Overlay.SetBorderGlowColor
 
 	-- Highlight for mouseover
 	local highlight = overlay:CreateTexture(nil, "BORDER")
@@ -426,11 +424,12 @@ local function createRaidFrame(self, unit)
 	ready:SetPoint("CENTER", self, "CENTER", 0,0)
 	self.ReadyCheck = ready
 
-	--local leader = overlay:CreateTexture(nil, "OVERLAY")
-	--leader:SetSize(22,22)
-	--leader:SetTexture[[Interface\GroupFrame\UI-Group-LeaderIcon]]
-	--leader:SetDesaturated(true)
-	--self.Leader = leader
+	local leader = overlay:CreateTexture(nil, "OVERLAY")
+	leader:SetSize(16,16)
+	leader:SetPoint('TOPLEFT', self, 'TOPLEFT', -4, 4)
+	leader:SetTexture[[Interface\GroupFrame\UI-Group-LeaderIcon]]
+	leader:SetDesaturated(true)
+	self.Leader = leader
 
 	local centerIcon = overlay:CreateTexture(nil, "OVERLAY")
 	centerIcon:SetSize(22, 22)

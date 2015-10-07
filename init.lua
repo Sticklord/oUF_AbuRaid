@@ -47,11 +47,13 @@ local defaults = {
 	group_spacing 	= 10,
 
 	layouts = {
-		["raid40"] 	= { width = 50, height = 40, scale = 1, position = {"TOPLEFT", "UIParent", "TOPLEFT", 15, -15 } },
-		["raid25"] 	= { width = 80, height = 40, scale = 1, position = {"TOPLEFT", "UIParent", "TOPLEFT", 15, -15 } },
-		["raid10"] 	= { width = 80, height = 40, scale = 1, position = {"TOPLEFT", "UIParent", "TOPLEFT", 15, -15 } },
-		["party"] 	= { width = 80, height = 40, scale = 1, position = {"TOPLEFT", "UIParent", "TOPLEFT", 15, -15 } },
+		["raid40"] 	= { width = 50, height = 40, scale = 1},
+		["raid25"] 	= { width = 80, height = 40, scale = 1},
+		["raid10"] 	= { width = 80, height = 40, scale = 1},
+		["party"] 	= { width = 80, height = 40, scale = 1},
 	},
+
+	position = {"TOPLEFT", "UIParent", "TOPLEFT", 15, -15 }, --Can be changed ingame
 
 }
 
@@ -126,7 +128,7 @@ for i = 1, 3 do
 	colors.threat[i] = { r, g, b }
 end
 
-local addon = CreateFrame("Frame")
+local addon = CreateFrame("Frame", 'oUF_AbuRaid')
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("SPELLS_CHANGED")
 addon:SetScript("OnEvent", function(self, event, ...)
@@ -138,6 +140,8 @@ addon:SetScript("OnEvent", function(self, event, ...)
 		self:UpdateDispelTypes()
 	elseif (event == "GROUP_ROSTER_UPDATE") or (event == "PLAYER_REGEN_ENABLED") then
 		self:UpdateRaidLayout(event)
+	elseif (event == "PLAYER_REGEN_DISABLED") then
+		self:LockAnchors()
 	end
 end)
 
@@ -154,6 +158,14 @@ function addon:OnInitialize(event, ...)
 	self.config.statusbar = SharedMedia:Fetch("statusbar", self.config.statusbarNAME)
 	self.config.overlaybar = SharedMedia:Fetch("statusbar", self.config.overlaybarNAME)
 	self.config.fonttext = SharedMedia:Fetch("font", self.config.fonttextNAME)
+
+	if not oUF_AbuRaid_Settings then 
+		_G.oUF_AbuRaid_Settings = {} 
+	end
+	if not oUF_AbuRaid_Settings.position then
+		oUF_AbuRaid_Settings['position'] = defaults.position
+	end
+	self.config['position'] = oUF_AbuRaid_Settings.position
 
 	-- KILLKILLKILL
 	CompactRaidFrameManager.Show = CompactRaidFrameManager.Hide
@@ -250,7 +262,7 @@ function addon:CreateHeaders(width, height, scale)
 			"initial-scale", scale,
 			"unitsPerColumn", 5
 		)
-		header:Show()
+		--header:Show()
 		self.headers[i] = header
 	end
 end
@@ -273,9 +285,9 @@ local function getRaidLayout()
 	return "party" -- or solo
 end
 
-function addon:UpdateRaidLayout(event, asd)
-	local layout = asd and asd or getRaidLayout()
-	if self.loadedLayout == layout then return; end
+function addon:UpdateRaidLayout(event, forceUpdate)
+	local layout = getRaidLayout()
+	if (not forceUpdate) and self.loadedLayout == layout then return; end
 
 	if event == "PLAYER_REGEN_ENABLED" then
 		self:UnregisterEvent(event)
@@ -336,12 +348,12 @@ function addon:UpdateRaidLayout(event, asd)
 		if needCreation then  -- Creates all frames, so no fuckups
 			header:Show()
 			header:SetAttribute("startingIndex", -4)
-			header:SetAttribute("startingIndex", 1)
 			header:Hide()
 			for index, child in next, {header:GetChildren()} do
 				header[index] = child
 			end
 		end
+		header:SetAttribute("startingIndex", 1)
 		header:SetScale(data.scale)
 
 		for i = 1, #header do
@@ -349,7 +361,7 @@ function addon:UpdateRaidLayout(event, asd)
 		end
 
 		if i == 1 then
-			header:SetPoint(unpack(data.position))
+			header:SetPoint(unpack(self.config.position))
 		else
 			header:SetPoint(grow_anchor, self.headers[i-1], hRelPoint, hxOffset, hyOffset)
 		end
@@ -359,22 +371,73 @@ function addon:UpdateRaidLayout(event, asd)
 	self.loadedLayout = layout
 end
 
-local A = 1
-function _G.B()
-	local i = 0
-	for k, v in pairs(ns.config.layouts) do
-		i = i  + 1
-		if i == A then
-			addon:UpdateRaidLayout(nil, k)
-		end
+-- positions
+local POINT, PARENT = "TOPLEFT", "UIParent"
+
+local function getCurrentPosition(self)
+	local point, _, rpoint, x, y = self:GetPoint()
+	-- convert whatever point we get over to topleft
+	local width, height = self:GetSize()
+
+	if point:find('RIGHT') then
+		x = x - (width)
+	elseif not point:find('LEFT') then
+		x = x - (width / 2)
 	end
 
-	A = A > 3 and 1 or (A + 1)
+	if point:find('BOTTOM') then
+		y = y + height
+	elseif (not point:find('TOP')) then
+		y = y + height/2
+	end
+
+	local scale = self.owner.headers[1]:GetEffectiveScale()
+	return POINT, PARENT, rpoint, math.floor(x/scale + .5), math.floor(y/scale + .5)
 end
 
-function _G.Z()
-	for i = 1, #addon.headers do
-		local header = addon.headers[i]
+local function onDragStop(self)
+	if self.isMoving then
+		self:StopMovingOrSizing()
+		local p, par, rp, x, y = getCurrentPosition(self)
+		local t = self.owner.config.position
+		t[1] = p
+		t[2] = par
+		t[3] = rp
+		t[4] = x
+		t[5] = y
+
+		local header = self.owner.headers[1]
+		header:ClearAllPoints()
+		header:SetPoint(p, par, rp, x, y)
+
+		self:ClearAllPoints()
+		self:SetPoint(POINT, header)
+	end
+	self.isMoving = false
+end
+
+local function onDragStart(self)
+	self.isMoving = true
+	self:StartMoving()
+
+	local header = self.owner.headers[1]
+	header:ClearAllPoints()
+	header:SetPoint(POINT,self)
+end
+
+local LOCKED = true
+function addon:UnlockAnchors()
+	if not LOCKED then 
+		return
+	elseif (InCombatLockdown()) then
+		return ns.print("Can't move frames during combat")
+	end
+	LOCKED = false
+
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+
+	for i = 1, #self.headers do
+		local header = self.headers[i]
 		local numMembers = 0
 
 		for j = 1, 40 do
@@ -392,17 +455,76 @@ function _G.Z()
 
 		for i = 1, header:GetNumChildren() do
 			local obj = select(i, header:GetChildren())
+			obj.old_unit = obj.unit
 			obj.unit = "player"
-			obj:SetID(i)
 
+			obj.old_onUpdate = obj:GetScript('OnUpdate')
 			obj:SetScript("OnUpdate", nil)
+
 			UnregisterUnitWatch(obj)
 			RegisterUnitWatch(obj, true)
-			obj.unit = "player"
 
 			obj:Show()
 		end
 	end
+
+	local f = self.moverFrame or CreateFrame("Frame", self:GetName().."MoverFrame")
+	f.owner = self
+	self.moverFrame = f
+	f:Show()
+
+	f:SetPoint('TOPLEFT', self.headers[1])
+	f:SetPoint('BOTTOMRIGHT', self.headers[#self.headers])
+
+	f:EnableMouse(true)
+	f:SetFrameStrata('HIGH')
+	f:SetMovable(true)
+	f:RegisterForDrag("LeftButton")
+	f:SetClampedToScreen(true)
+
+	f:SetScript("OnDragstart",onDragStart)
+	f:SetScript("OnDragStop", onDragStop)
+
+	return true
+end
+
+function addon:LockAnchors()
+	if LOCKED then return end
+
+	for i = 1, #self.headers do
+		local header = self.headers[i]
+		for i = 1, header:GetNumChildren() do
+			local obj = select(i, header:GetChildren())
+			obj.unit = obj.unit
+			obj:SetScript("OnUpdate", obj.old_onUpdate)
+
+			UnregisterUnitWatch(obj)
+			RegisterUnitWatch(obj)
+			obj:UpdateAllElements("OnShow")
+		end
+	end
+	LOCKED = true
+
+	if event then
+		self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+	end
+	onDragStop(self.moverFrame)
+	self.moverFrame:Hide()
+	self:UpdateRaidLayout()
+
+	return true
+end
+
+function addon:ToggleAnchors()
+	if self:IsAnchorsLocked() then
+		return self:UnlockAnchors()
+	else
+		return self:LockAnchors()
+	end
+end
+
+function addon:IsAnchorsLocked()
+	return LOCKED
 end
 
 function addon:UpdateDispelTypes()
@@ -439,5 +561,17 @@ function addon:UpdateDispelTypes()
 
 	elseif class == "WARLOCK" then
 		ns.Dispel.Magic   = IsPlayerSpell(115276, true) or IsPlayerSpell(89808, true) -- Sear Magic (Fel Imp) or Singe Magic (Imp)
+	end
+end
+
+function ns.print(...)
+	print("|cffffcf00oUF_AbuRaid: |r", ...)
+end
+
+_G.SLASH_OUFABURAID1 = "/oufaburaid"
+SlashCmdList['OUFABURAID'] = function(...)
+	if addon:ToggleAnchors() then
+		local s = addon:IsAnchorsLocked() and "locked" or "un-locked"
+		ns.print("Raid frames "..s..".")
 	end
 end

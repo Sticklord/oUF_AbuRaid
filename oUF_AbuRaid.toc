@@ -1,8 +1,9 @@
-## Interface: 60000
+## Interface: 60200
 ## Author: Abu
 ## Title: oUF_|cffffffffAbu|rRaid
 ## RequiredDeps: oUF
 ## OptionalDeps: SharedMedia
+## SavedVariables: oUF_AbuRaid_Settings
 
 Libs/LibStub.lua
 Libs/CallbackHandler-1.0.lua
