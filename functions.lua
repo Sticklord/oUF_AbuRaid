@@ -385,42 +385,44 @@ do
 		local canAssist = UnitCanAssist("player", unit)
 		local lastPrior, lastType, canDispelLast = 0
 
-		local harmful, index = true, 0
+		local filter, index = 'HARMFUL', 0
 		while (true) do
 			index = index + 1
-
-			local name, _, icon, count, debuffType, duration, expirationTime, caster, _, _, spellId, canApplyAura, isBossDebuff = (harmful and UnitDebuff or UnitBuff)(unit, index)
+			local name, _, icon, count, debuffType, duration, expirationTime, caster, _, _, spellID, canApplyAura, isBossDebuff, _, nameplateShowAll = UnitAura(unit, index , filter)
 
 			if (not name) then
-				if harmful then
-					harmful = nil
+				if filter == 'HARMFUL' then
+					filter = 'HELPFUL'
 					index = 0
 				else
 					break;
 				end
 			else
-				if (not isBossDebuff) then
-					isBossDebuff = caster and caster:find("boss")
-				end
-				if (harmful) and (canAssist) and (dispelPriority[debuffType]) and (
-					(canDispelLast and ns.Dispel[debuffType] and dispelPriority[debuffType] > lastPrior) or
-					(not canDispelLast and (ns.Dispel[debuffType] or dispelPriority[debuffType] > lastPrior))) -- looks pretty dont it
-				then
-					lastType = debuffType
-					canDispelLast = ns.Dispel[debuffType]
-					lastPrior = dispelPriority[debuffType]
-				end
 
-				-- Only show the first seen debuff for now
-				if (noDebuff) and (isBossDebuff or (harmful and ns.WhiteList[spellId])) then
-					debuff:Show()
-					if (duration) then
-						debuff.cd:SetCooldown(expirationTime - duration, duration)
+				if (filter == 'HARMFUL') then
+					--Figure out if dispellable
+					if  (canAssist) and (dispelPriority[debuffType]) and (
+						(canDispelLast and ns.Dispel[debuffType] and dispelPriority[debuffType] > lastPrior) or
+						(not canDispelLast and (ns.Dispel[debuffType] or dispelPriority[debuffType] > lastPrior))) -- looks pretty dont it
+					then
+						lastType = debuffType
+						canDispelLast = ns.Dispel[debuffType]
+						lastPrior = dispelPriority[debuffType]
 					end
-					debuff.icon:SetTexture(icon)
-					debuff.count:SetText(count > 1 and count)
-					noDebuff = false
-				end	
+
+					-- Display a single debuff in the debuff slot
+					if (noDebuff) then
+						if  (isBossDebuff or nameplateShowAll or ns.WhiteList[spellId]) then
+							debuff:Show()
+							if (duration) then
+								debuff.cd:SetCooldown(expirationTime - duration, duration)
+							end
+							debuff.icon:SetTexture(icon)
+							debuff.count:SetText(count > 1 and count)
+							noDebuff = false
+						end	
+					end
+				end
 
 				-- Check for indicators
 				local indicator = icons[name]

@@ -34,7 +34,7 @@ local defaults = {
 	powerbar_bgmult 	= 0.3,
 
 	threat_threshold 	= 3, 	
-	show_debuffborder 	= true, 
+	show_debuffborder 	= true, -- Color the border after debuff type even if you cant dispel it
 
 
 	-- visibility options
@@ -177,7 +177,7 @@ function addon:OnInitialize(event, ...)
 	CompactRaidFrameContainer:Hide()
 	
 	self:UpdateDispelTypes()
-	self:UpdateRaidLayout()
+	self:UpdateRaidLayout(event)
 	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 end
 
@@ -285,9 +285,9 @@ local function getRaidLayout()
 	return "party" -- or solo
 end
 
-function addon:UpdateRaidLayout(event, forceUpdate)
+function addon:UpdateRaidLayout(event)
 	local layout = getRaidLayout()
-	if (not forceUpdate) and self.loadedLayout == layout then return; end
+	if (event ~= 'ForceUpdate') and self.loadedLayout == layout then return; end
 
 	if event == "PLAYER_REGEN_ENABLED" then
 		self:UnregisterEvent(event)
@@ -447,7 +447,7 @@ function addon:UnlockAnchors()
 			end
 		end
 
-		header:SetAttribute("startingIndex", 1 + numMembers - header:GetAttribute("unitsPerColumn"))
+		header:SetAttribute("startingIndex", 1 - header:GetAttribute("unitsPerColumn"))
 		RegisterAttributeDriver(header, 'state-visibility', 'show')
 		header:SetAttribute("showSolo", nil)
 		header:SetAttribute("showParty", nil)
@@ -495,12 +495,16 @@ function addon:LockAnchors()
 		local header = self.headers[i]
 		for i = 1, header:GetNumChildren() do
 			local obj = select(i, header:GetChildren())
-			obj.unit = obj.unit
-			obj:SetScript("OnUpdate", obj.old_onUpdate)
+			if obj.old_unit then
+				obj.unit = obj.old_unit
+				obj.old_unit = nil
+				obj:SetScript("OnUpdate", obj.old_onUpdate)
+				obj.old_onUpdate = nil
 
-			UnregisterUnitWatch(obj)
-			RegisterUnitWatch(obj)
-			obj:UpdateAllElements("OnShow")
+				UnregisterUnitWatch(obj)
+				RegisterUnitWatch(obj)
+				obj:UpdateAllElements("OnShow")
+			end
 		end
 	end
 	LOCKED = true
@@ -510,7 +514,7 @@ function addon:LockAnchors()
 	end
 	onDragStop(self.moverFrame)
 	self.moverFrame:Hide()
-	self:UpdateRaidLayout()
+	self:UpdateRaidLayout('ForceUpdate')
 
 	return true
 end
